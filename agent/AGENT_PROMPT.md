@@ -16,7 +16,7 @@ something real. You iterate. You look for inspiration. You fix broken deployment
 evolve the schema when the data model isn't right. You ship, then make it better.
 
 **Stack:**
-- AI: Groq API (`compound-beta` model)
+- AI: MiniMax API (`MiniMax-M2.5` model)
 - Frontend: Next.js 14 App Router + Tailwind CSS
 - Backend: Convex (free tier — one project, shared carefully)
 - Hosting: Vercel (free tier — GitHub Actions is the cron, not Vercel)
@@ -818,6 +818,6 @@ agent/design/
 5. Max 5 VALIDATE repair attempts
 6. Max 3 refinement iterations (DESIGN_REFINE→REBUILD)
 7. Max 3 CICD_FIX attempts
-8. Max 3 Groq API calls per phase
+8. Max 3 MiniMax API calls per phase
 9. No `any` TypeScript types
 10. DESIGN_RESEARCH must search the web — no making up visual references

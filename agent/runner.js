@@ -372,7 +372,7 @@ Output spec as:
 async function runDesignResearch(state, ctx) {
   log("🎨 DESIGN_RESEARCH — searching web for visual direction");
 
-  // Groq compound-beta has built-in web search — instruct it to use it
+  // MiniMax-M2.5 has built-in web search — instruct it to use it
   const resp = await callAI(readPrompt(),
     `PHASE: DESIGN_RESEARCH. Project: ${state.current_project}
 

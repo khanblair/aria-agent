@@ -71,7 +71,7 @@ WEEK 2+ — BUILD
 
 | Secret | Where |
 |--------|-------|
-| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) |
+| `MINIMAX_API_KEY` | [platform.minimaxi.com](https://platform.minimaxi.com) |
 | `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) |
 | `VERCEL_ORG_ID` | Vercel → Settings → General |
 | `CONVEX_DEPLOY_KEY` | Convex dashboard → Settings |
@@ -91,7 +91,7 @@ aria-agent/
 ├── agent/
 │   ├── AGENT_PROMPT.md           # Full system prompt (all phases)
 │   ├── runner.js                 # Phase orchestrator
-│   ├── package.json              # groq-sdk dep
+│   ├── package.json              # openai dep
 │   ├── memory/
 │   │   ├── state.json            # Phase + iteration tracking
 │   │   ├── backlog.json          # Adjacent problems
@@ -123,8 +123,8 @@ aria-agent/
 
 ## Resilience & Rate Limiting
 
-ARIA is designed to stay within Groq's high-performance limits:
-- **Model**: Uses `groq/compound` for the best power/speed balance.
+ARIA is designed to stay within MiniMax's Starter limits:
+- **Model**: Uses `MiniMax-M2.5` for the best power/speed balance.
 - **Handling 429s**: Implements exponential backoff (retries with increasing delays) if rate limited.
 - **RPM Management**: Adds mandatory inter-request delays to respect the 30 Requests Per Minute limit.
 - **Efficiency**: Only 3 scheduled runs per day to stay well under the 250 Requests Per Day quota.
