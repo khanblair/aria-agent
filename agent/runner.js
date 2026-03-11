@@ -56,6 +56,43 @@ async function callGroq(systemPrompt, userMessage, maxTokens = 8000) {
   throw new Error(`Max retries exceeded for Groq [${MODEL}]`);
 }
 
+import https from "https";
+
+async function sendTelegram(message) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  log(`📤 Telegram → ${message.slice(0, 50)}...`);
+  const data = JSON.stringify({
+    chat_id: chatId,
+    text: message,
+    parse_mode: "Markdown",
+  });
+
+  return new Promise((resolve) => {
+    const req = https.request(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": data.length,
+        },
+      },
+      (res) => {
+        resolve();
+      }
+    );
+    req.on("error", (e) => {
+      log(`  ⚠️ Telegram error: ${e.message}`);
+      resolve();
+    });
+    req.write(data);
+    req.end();
+  });
+}
+
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
@@ -755,7 +792,8 @@ async function runDeployProd(state) {
       last_action: "Vercel production deploy failed", next_action: "Fix CI/CD" };
   }
 
-  log(`  ✅ Production: ${prodUrl}`);
+  log(`🚀 Deployed (prod): ${prodUrl}`);
+  await sendTelegram(`✅ *Project Deployed to Production!*\n\n🔗 [View Site](${prodUrl})`);
 
   // Full smoke test suite
   const routes = ["/"];
@@ -1048,6 +1086,7 @@ async function runDiscover(state, ctx) {
 
 async function main() {
   log(`🤖 ARIA (Groq ${MODEL})`);
+  await sendTelegram(`🚀 *ARIA session started* using ${MODEL}`);
 
   const statePath = path.join(MEMORY_DIR, "state.json");
   let state = readJSON(statePath, {

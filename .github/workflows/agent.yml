@@ -159,6 +159,8 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DEBUG_MODE: ${{ inputs.debug_mode }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_PAGES_URL: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
