@@ -125,7 +125,11 @@ function log(msg) {
   console.log(`[${new Date().toISOString().split("T")[1].slice(0,8)}] ${msg}`);
 }
 function today() { return new Date().toISOString().split("T")[0]; }
-function readPrompt() { return fs.readFileSync(path.join(__dirname, "AGENT_PROMPT.md"), "utf8"); }
+function readPrompt() {
+  const p = path.join(__dirname, "AGENT_PROMPT.md");
+  if (!fs.existsSync(p)) throw new Error("AGENT_PROMPT.md is missing from agent/ directory");
+  return fs.readFileSync(p, "utf8");
+}
 
 function shell(cmd, opts = {}) {
   return spawnSync("bash", ["-c", cmd], {
@@ -1096,8 +1100,21 @@ async function runDiscover(state, ctx) {
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
+/** Pre-create every directory ARIA may write to. Prevents ENOENT on first run. */
+function ensureDirectories() {
+  const dirs = [
+    MEMORY_DIR, RESEARCH_DIR, DESIGN_DIR, SPECS_DIR, REFLECTIONS_DIR,
+    path.join(ROOT, "docs", "journal"),
+    path.join(ROOT, "docs", "_site"),
+    path.join(ROOT, "projects"),
+  ];
+  dirs.forEach(d => fs.mkdirSync(d, { recursive: true }));
+  log(`📁 Directories verified (${dirs.length})`);
+}
+
 async function main() {
-  log(`🤖 ARIA (Groq ${MODEL})`);
+  log(`🤖 ARIA (${MODEL})`);
+  ensureDirectories();
   await sendTelegram(`🚀 *ARIA session started* using ${MODEL}`);
 
   const statePath = path.join(MEMORY_DIR, "state.json");
