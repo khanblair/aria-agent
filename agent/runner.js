@@ -1,13 +1,15 @@
 // agent/runner.js — ARIA
 // Full build pipeline: design research, refinement cycles, schema evolution, CI/CD fixing
 
-import Groq from "groq-sdk";
+import dotenv from "dotenv";
+import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { execSync, spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 const ROOT       = path.join(__dirname, "..");
 const MEMORY_DIR = path.join(__dirname, "memory");
 const RESEARCH_DIR = path.join(__dirname, "research");
@@ -15,18 +17,26 @@ const DESIGN_DIR = path.join(__dirname, "design");
 const SPECS_DIR  = path.join(__dirname, "specs");
 const REFLECTIONS_DIR = path.join(__dirname, "reflections");
 
-const MODEL = "groq/compound"; // Stable name matching user's limits
+const MODEL = "MiniMax-M2.5"; // MiniMax Starter plan — 100 prompts / 5h
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// OpenAI-compatible client pointed at MiniMax
+const ai = new OpenAI({
+  apiKey: process.env.MINIMAX_API_KEY,
+  baseURL: "https://api.minimax.io/v1",
+});
 
-async function callGroq(systemPrompt, userMessage, maxTokens = 8000) {
+// Rate limit: 100 prompts / 5 hours = 1 per 3 min.
+// We enforce a mandatory 3-min delay AFTER every successful call.
+const INTER_REQUEST_DELAY = 180_000; // 3 minutes in ms
+
+async function callAI(systemPrompt, userMessage, maxTokens = 8000) {
   const MAX_RETRIES = 3;
   let attempt = 0;
 
   while (attempt < MAX_RETRIES) {
     try {
-      log(`🧠 Groq [${MODEL}] → ${maxTokens} tokens (Attempt ${attempt + 1})`);
-      const response = await groq.chat.completions.create({
+      log(`🧠 MiniMax [${MODEL}] → ${maxTokens} tokens (Attempt ${attempt + 1})`);
+      const response = await ai.chat.completions.create({
         model: MODEL,
         max_tokens: maxTokens,
         messages: [
@@ -35,17 +45,19 @@ async function callGroq(systemPrompt, userMessage, maxTokens = 8000) {
         ],
       });
 
-      // Add a small breather between calls to stay under 30 RPM
-      await sleep(2000); 
-
       const text = response.choices[0]?.message?.content || "";
       log(`   ← ${text.length} chars`);
+
+      // Mandatory breather — respect 100 prompts/5h quota
+      log(`   ⏳ Waiting ${INTER_REQUEST_DELAY/1000}s before next call...`);
+      await sleep(INTER_REQUEST_DELAY);
+
       return text;
 
     } catch (err) {
       if (err?.status === 429) {
         attempt++;
-        const wait = Math.pow(2, attempt) * 5000;
+        const wait = Math.pow(2, attempt) * 30_000; // 30s, 60s, 120s
         log(`  ⚠️  Rate limited (429). Waiting ${wait/1000}s...`);
         await sleep(wait);
       } else {
@@ -53,7 +65,7 @@ async function callGroq(systemPrompt, userMessage, maxTokens = 8000) {
       }
     }
   }
-  throw new Error(`Max retries exceeded for Groq [${MODEL}]`);
+  throw new Error(`Max retries exceeded for MiniMax [${MODEL}]`);
 }
 
 import https from "https";
@@ -235,7 +247,7 @@ function getProjectTree(dir, depth = 0) {
 
 async function runScan(state, ctx) {
   log("🔭 SCAN");
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: SCAN. Today: ${today()}
 Past ideas: ${JSON.stringify(ctx.past_ideas.map(i => i.title || i.slug))}
 Seeded backlog: ${JSON.stringify(ctx.backlog.filter(b => b.ready_for_research))}
@@ -257,7 +269,7 @@ async function runInvestigate(state, ctx) {
     return { ...state, research_phase: "SYNTHESIZE", last_action: "All investigated", next_action: "Synthesize" };
   }
   const target = remaining[0];
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: INVESTIGATE. Target: "${target}"
 Scan context: ${ctx.latest_scan?.slice(0, 1500) || "N/A"}
 Include // INVESTIGATE_COMPLETE block.`);
@@ -286,7 +298,7 @@ async function runSynthesize(state, ctx) {
     const fp = path.join(RESEARCH_DIR, `investigate-${slug}.md`);
     return `### ${slug}\n${fs.existsSync(fp) ? fs.readFileSync(fp, "utf8").slice(0, 600) : "(missing)"}`;
   }).join("\n\n---\n\n");
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: SYNTHESIZE. Investigations:\n${investigations}\nBacklog: ${JSON.stringify(ctx.backlog)}
 Include // SYNTHESIS_COMPLETE block.`, 10000);
   fs.writeFileSync(path.join(RESEARCH_DIR, "synthesis.md"), resp);
@@ -297,7 +309,7 @@ Include // SYNTHESIS_COMPLETE block.`, 10000);
 
 async function runDecide(state, ctx) {
   log("🎯 DECIDE");
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: DECIDE. Synthesis:\n${ctx.synthesis || "N/A"}
 Chosen: ${state.synthesis_chosen}. Backlog: ${JSON.stringify(state.synthesis_backlog)}
 Output: // FILE: memory/chosen_problem.json, ## COMMITMENT, // BACKLOG_SEED`);
@@ -330,7 +342,7 @@ Output: // FILE: memory/chosen_problem.json, ## COMMITMENT, // BACKLOG_SEED`);
 
 async function runDefine(state, ctx) {
   log("📋 DEFINE");
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: DEFINE. Project: ${state.current_project}
 Chosen problem: ${JSON.stringify(ctx.chosen)}
 Synthesis: ${ctx.synthesis?.slice(0, 1000) || "N/A"}
@@ -357,7 +369,7 @@ async function runDesignResearch(state, ctx) {
   log("🎨 DESIGN_RESEARCH — searching web for visual direction");
 
   // Groq compound-beta has built-in web search — instruct it to use it
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: DESIGN_RESEARCH. Project: ${state.current_project}
 
 Spec:
@@ -401,7 +413,7 @@ Be SPECIFIC: exact hex codes, exact font names, URLs you actually found.`, 10000
 async function runBuild(state, ctx) {
   log("🏗️  BUILD");
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: BUILD. Project: ${state.current_project}
 
 Spec:
@@ -469,7 +481,7 @@ async function runValidate(state, ctx) {
     log(`  ❌ ${fail.type}: fixing...`);
     errors.push(fail);
 
-    const fix = await callGroq(readPrompt(),
+    const fix = await callAI(readPrompt(),
       `REPAIR MODE. Project: ${state.current_project}. Attempt ${attempt}/${MAX}.
 Error type: ${fail.type}
 Error:
@@ -554,7 +566,7 @@ async function runDesignRefine(state, ctx) {
   const dir = projectDir(state.current_project);
   const tree = getProjectTree(dir);
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: DESIGN_REFINE. Project: ${state.current_project}
 Refinement iteration: ${iter}/3
 Preview URL: ${state.preview_url || "not available"}
@@ -617,7 +629,7 @@ async function runSchemaRefine(state, ctx) {
     .map(f => `// ${f}\n${fs.readFileSync(path.join(convexDir, f), "utf8").slice(0, 500)}`)
     .join("\n\n---\n\n");
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: SCHEMA_REFINE. Project: ${state.current_project}
 
 Current Convex schema:
@@ -678,7 +690,7 @@ async function runRebuild(state, ctx) {
   const appPage = path.join(dir, "app", "page.tsx");
   const tailwindConfig = path.join(dir, "tailwind.config.ts");
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: REBUILD. Project: ${state.current_project}. Iteration: ${iter}
 
 Design critique to apply:
@@ -829,7 +841,7 @@ async function runCICDFix(state, ctx) {
   const dir = projectDir(state.current_project);
   const cicdContext = state.cicd_context || {};
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: CICD_FIX. Project: ${state.current_project}. Attempt ${attempt}/3.
 
 CI/CD failure context:
@@ -903,7 +915,7 @@ async function runPolish(state, ctx) {
   const envCheck = shell("grep -r 'process\\.env\\.' app/ --include='*.tsx' 2>/dev/null | grep -v '??' | wc -l", { cwd: dir });
   const unsafeEnvAccess = parseInt(envCheck.stdout || "0");
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: POLISH. Project: ${state.current_project}
 Production URL: ${state.production_url || "not available"}
 
@@ -959,7 +971,7 @@ async function runReflect(state, ctx) {
     || deployments.filter(d => d.project === state.current_project).pop();
   const projectErrors = readJSON(path.join(MEMORY_DIR, "error_log.json"), []).filter(e => e.project === state.current_project);
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: REFLECT. Project: ${state.current_project}
 Deployment: ${JSON.stringify(latestDeploy)}
 Production URL: ${state.production_url || "N/A"}
@@ -1042,7 +1054,7 @@ async function runPonder(state, ctx) {
   const count = (state.ponder_count || 0) + 1;
   log(`🤔 PONDER ${count}/3`);
 
-  const resp = await callGroq(readPrompt(),
+  const resp = await callAI(readPrompt(),
     `PHASE: PONDER. Run ${count}/3. Project finished: ${state.current_project}
 Backlog: ${JSON.stringify(ctx.backlog, null, 2)}
 

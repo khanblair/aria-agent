@@ -5,7 +5,7 @@
 [![Agent Status](https://github.com/YOUR_USERNAME/aria-agent/actions/workflows/agent.yml/badge.svg)](https://github.com/YOUR_USERNAME/aria-agent/actions/workflows/agent.yml)
 [![Journal](https://img.shields.io/badge/Evolution_Journal-Live-00ff88)](https://YOUR_USERNAME.github.io/aria-agent)
 
-**Stack:** Groq (`compound-beta`) · Next.js 14 · Convex (free) · Vercel (free) · GitHub Actions
+**Stack:** MiniMax M2.5 · Next.js 14 · Convex (free) · Vercel (free) · GitHub Actions
 
 ---
 
@@ -115,7 +115,7 @@ aria-agent/
 
 | | Monthly |
 |--|--|
-| Groq API (compound-beta) | ~$3–8 |
+| MiniMax M2.5 (Starter Plan) | $10/mo |
 | Vercel, Convex, GitHub Actions | $0 |
 | **Total** | **~$3–8** |
 

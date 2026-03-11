@@ -2,12 +2,8 @@ name: 🤖 ARIA — Build, Refine, Ship
 
 on:
   schedule:
-    # 3×/day — each run advances one phase
-    # Week 1 (research): scan → investigate × 5 → synthesize → decide
-    # Week 2+ (build): define → design_research → build → validate → staging
-    #                  → design_refine → schema_refine → rebuild → validate
-    #                  → deploy_prod → cicd_fix? → polish → reflect → ponder × 3
-    - cron: '0 6,14,22 * * *'
+    # Every 5 hours — synced to MiniMax Starter quota window (100 prompts / 5h)
+    - cron: '0 */5 * * *'
   workflow_dispatch:
     inputs:
       force_phase:
@@ -154,7 +150,7 @@ jobs:
 
       - name: Run ARIA
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
