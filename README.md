@@ -121,6 +121,16 @@ aria-agent/
 
 ---
 
+## Resilience & Rate Limiting
+
+ARIA is designed to stay within Groq's high-performance limits:
+- **Model**: Uses `groq/compound` for the best power/speed balance.
+- **Handling 429s**: Implements exponential backoff (retries with increasing delays) if rate limited.
+- **RPM Management**: Adds mandatory inter-request delays to respect the 30 Requests Per Minute limit.
+- **Efficiency**: Only 3 scheduled runs per day to stay well under the 250 Requests Per Day quota.
+
+---
+
 ## License
 
 MIT

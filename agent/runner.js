@@ -15,24 +15,48 @@ const DESIGN_DIR = path.join(__dirname, "design");
 const SPECS_DIR  = path.join(__dirname, "specs");
 const REFLECTIONS_DIR = path.join(__dirname, "reflections");
 
-// ─── Groq Client ──────────────────────────────────────────────────────────────
+const MODEL = "groq/compound"; // Stable name matching user's limits
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 async function callGroq(systemPrompt, userMessage, maxTokens = 8000) {
-  log(`🧠 Groq [compound-beta] → ${maxTokens} tokens`);
-  const response = await groq.chat.completions.create({
-    model: "compound-beta",
-    max_tokens: maxTokens,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user",   content: userMessage  },
-    ],
-  });
-  const text = response.choices[0]?.message?.content || "";
-  log(`   ← ${text.length} chars`);
-  return text;
+  const MAX_RETRIES = 3;
+  let attempt = 0;
+
+  while (attempt < MAX_RETRIES) {
+    try {
+      log(`🧠 Groq [${MODEL}] → ${maxTokens} tokens (Attempt ${attempt + 1})`);
+      const response = await groq.chat.completions.create({
+        model: MODEL,
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userMessage  },
+        ],
+      });
+
+      // Add a small breather between calls to stay under 30 RPM
+      await sleep(2000); 
+
+      const text = response.choices[0]?.message?.content || "";
+      log(`   ← ${text.length} chars`);
+      return text;
+
+    } catch (err) {
+      if (err?.status === 429) {
+        attempt++;
+        const wait = Math.pow(2, attempt) * 5000;
+        log(`  ⚠️  Rate limited (429). Waiting ${wait/1000}s...`);
+        await sleep(wait);
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error(`Max retries exceeded for Groq [${MODEL}]`);
 }
+
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
@@ -1023,7 +1047,7 @@ async function runDiscover(state, ctx) {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  log("🤖 ARIA v3.0 (Groq compound-beta)");
+  log(`🤖 ARIA (Groq ${MODEL})`);
 
   const statePath = path.join(MEMORY_DIR, "state.json");
   let state = readJSON(statePath, {
