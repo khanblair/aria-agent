@@ -86,8 +86,8 @@ jobs:
 
       - name: Bootstrap memory (first run)
         run: |
-          mkdir -p agent/memory agent/research agent/design agent/specs agent/reflections agent/meta
-          mkdir -p docs/journal projects
+          # Directories are guaranteed by .gitkeep files in the repo.
+          # Just initialise default JSON files if they don't exist yet.
 
           if [ ! -f agent/memory/state.json ]; then
             cat > agent/memory/state.json << 'EOF'
