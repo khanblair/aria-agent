@@ -116,7 +116,9 @@ jobs:
           fi
 
           for f in past_ideas idea_log error_log success_log lessons deployments improvements backlog cicd_patterns; do
-            [ ! -f "agent/memory/${f}.json" ] && echo "[]" > "agent/memory/${f}.json"
+            if [ ! -f "agent/memory/${f}.json" ]; then
+              echo "[]" > "agent/memory/${f}.json"
+            fi
           done
 
       - name: Show state
