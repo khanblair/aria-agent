@@ -1,0 +1,242 @@
+name: 🤖 ARIA — Build, Refine, Ship
+
+on:
+  schedule:
+    # 3×/day — each run advances one phase
+    # Week 1 (research): scan → investigate × 5 → synthesize → decide
+    # Week 2+ (build): define → design_research → build → validate → staging
+    #                  → design_refine → schema_refine → rebuild → validate
+    #                  → deploy_prod → cicd_fix? → polish → reflect → ponder × 3
+    - cron: '0 6,14,22 * * *'
+  workflow_dispatch:
+    inputs:
+      force_phase:
+        description: 'Force a specific phase'
+        required: false
+        type: choice
+        options:
+          - ''
+          - SCAN
+          - INVESTIGATE
+          - SYNTHESIZE
+          - DECIDE
+          - DEFINE
+          - DESIGN_RESEARCH
+          - BUILD
+          - VALIDATE
+          - DEPLOY_STAGING
+          - DESIGN_REFINE
+          - SCHEMA_REFINE
+          - REBUILD
+          - DEPLOY_PROD
+          - CICD_FIX
+          - POLISH
+          - REFLECT
+          - PONDER
+          - DISCOVER
+      debug_mode:
+        description: 'Verbose logging'
+        type: boolean
+        default: false
+
+concurrency:
+  group: aria
+  cancel-in-progress: false
+
+jobs:
+  aria:
+    name: ARIA Agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 45   # Polish + deploy can take a while
+
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI & Convex CLI
+        run: |
+          npm install -g vercel@latest
+          npm install -g convex@latest
+
+      - name: Install agent deps
+        run: cd agent && npm install
+
+      # Full memory + design cache — this is the agent's brain
+      - name: Restore memory cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            agent/memory
+            agent/research
+            agent/design
+            agent/specs
+            agent/reflections
+          key: aria-memory-${{ github.run_number }}
+          restore-keys: |
+            aria-memory-
+
+      - name: Bootstrap memory (first run)
+        run: |
+          mkdir -p agent/memory agent/research agent/design agent/specs agent/reflections agent/meta
+          mkdir -p docs/journal projects
+
+          if [ ! -f agent/memory/state.json ]; then
+            cat > agent/memory/state.json << 'EOF'
+          {
+            "last_run": null,
+            "current_phase": "SCAN",
+            "research_phase": "SCAN",
+            "current_project": null,
+            "week": 1,
+            "refinement_iteration": 0,
+            "cicd_fix_attempts": 0,
+            "ponder_count": 0,
+            "cycle_count": 0,
+            "investigated_slugs": [],
+            "scan_top_5": [],
+            "preview_url": null,
+            "production_url": null,
+            "last_action": "Initialized",
+            "next_action": "Begin Week 1 research",
+            "errors_this_run": [],
+            "files_written": [],
+            "status": "SUCCESS"
+          }
+          EOF
+            echo "✅ State bootstrapped"
+          fi
+
+          for f in past_ideas idea_log error_log success_log lessons deployments improvements backlog cicd_patterns; do
+            [ ! -f "agent/memory/${f}.json" ] && echo "[]" > "agent/memory/${f}.json"
+          done
+
+      - name: Show state
+        id: state
+        run: |
+          PHASE=$(python3 -c "import json; s=json.load(open('agent/memory/state.json')); print(s.get('current_phase','?'))" 2>/dev/null || echo "?")
+          WEEK=$(python3 -c "import json; s=json.load(open('agent/memory/state.json')); print(s.get('week',1))" 2>/dev/null || echo "1")
+          PROJ=$(python3 -c "import json; s=json.load(open('agent/memory/state.json')); print(s.get('current_project','') or '')" 2>/dev/null || echo "")
+          ITER=$(python3 -c "import json; s=json.load(open('agent/memory/state.json')); print(s.get('refinement_iteration',0))" 2>/dev/null || echo "0")
+          echo "phase=$PHASE" >> $GITHUB_OUTPUT
+          echo "week=$WEEK" >> $GITHUB_OUTPUT
+          echo "project=$PROJ" >> $GITHUB_OUTPUT
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  ARIA  |  Phase: $PHASE  |  Week: $WEEK"
+          echo "  Project: ${PROJ:-none}  |  Refinement: ${ITER}/3"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Force phase (if triggered manually)
+        if: ${{ inputs.force_phase != '' }}
+        run: |
+          python3 << 'PY'
+          import json
+          with open('agent/memory/state.json') as f:
+            s = json.load(f)
+          s['current_phase'] = '${{ inputs.force_phase }}'
+          with open('agent/memory/state.json', 'w') as f:
+            json.dump(s, f, indent=2)
+          print(f"Phase forced to: ${{ inputs.force_phase }}")
+          PY
+
+      - name: Run ARIA
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          DEBUG_MODE: ${{ inputs.debug_mode }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_PAGES_URL: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: cd agent && node runner.js
+
+      - name: Show result
+        if: always()
+        run: |
+          echo ""
+          python3 << 'PY'
+          import json
+          try:
+            s = json.load(open('agent/memory/state.json'))
+            print("━━━━━━ ARIA Run Complete ━━━━━━")
+            print(f"  Phase now  : {s.get('current_phase')}")
+            print(f"  Last action: {s.get('last_action')}")
+            print(f"  Next action: {s.get('next_action')}")
+            print(f"  Status     : {s.get('status')}")
+            print(f"  Refinement : {s.get('refinement_iteration',0)}/3")
+            if s.get('preview_url'): print(f"  Preview    : {s['preview_url']}")
+            if s.get('production_url'): print(f"  Production : {s['production_url']}")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+          except:
+            print("(state unreadable)")
+          PY
+
+      - name: Commit outputs
+        run: |
+          git config user.name "ARIA Agent"
+          git config user.email "aria@autonomous.build"
+          git add -A
+
+          PHASE=$(python3 -c "import json; print(json.load(open('agent/memory/state.json')).get('current_phase',''))" 2>/dev/null || echo "")
+          ACTION=$(python3 -c "import json; print(json.load(open('agent/memory/state.json')).get('last_action','ran'))" 2>/dev/null || echo "ran")
+
+          if git diff --staged --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "🤖 ARIA [$PHASE] $ACTION
+
+          Run: #${{ github.run_number }}
+          Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+            echo "✅ Committed"
+          fi
+
+      - name: Archive run logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aria-run-${{ github.run_number }}
+          path: |
+            agent/memory/
+            agent/research/
+            agent/design/
+            agent/reflections/
+          retention-days: 30
+
+  journal:
+    name: Deploy Journal
+    needs: aria
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: cd docs && node build-journal.js
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: docs/_site }
+      - id: deploy
+        uses: actions/deploy-pages@v4

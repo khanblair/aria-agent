@@ -1,0 +1,13 @@
+{
+  "name": "aria-agent",
+  "version": "3.0.0",
+  "description": "ARIA — Autonomous Research & Implementation Agent",
+  "type": "module",
+  "main": "runner.js",
+  "scripts": {
+    "start": "node runner.js"
+  },
+  "dependencies": {
+    "groq-sdk": "^0.9.0"
+  }
+}

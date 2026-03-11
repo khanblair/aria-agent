@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.vercel/
+.env
+.env.local
+agent/memory/*.json
+projects/*/node_modules/
+projects/*/.next/
+dist/
+build/
+*.log
+.DS_Store
