@@ -1115,7 +1115,8 @@ function ensureDirectories() {
 async function main() {
   log(`🤖 ARIA (${MODEL})`);
   ensureDirectories();
-  await sendTelegram(`🚀 *ARIA session started* using ${MODEL}`);
+  const nextRun = new Date(Date.now() + 5 * 3600000).toISOString().replace("T", " ").substring(0, 16) + " UTC";
+  await sendTelegram(`🚀 *ARIA session started* using ${MODEL}\n⏳ Next run: \`${nextRun}\``);
 
   const statePath = path.join(MEMORY_DIR, "state.json");
   let state = readJSON(statePath, {
