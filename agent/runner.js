@@ -1115,9 +1115,6 @@ function ensureDirectories() {
 async function main() {
   log(`🤖 ARIA (${MODEL})`);
   ensureDirectories();
-  const nextRun = new Date(Date.now() + 5 * 3600000).toISOString().replace("T", " ").substring(0, 16) + " UTC";
-  await sendTelegram(`🚀 *ARIA session started* using ${MODEL}\n⏳ Next run: \`${nextRun}\``);
-
   const statePath = path.join(MEMORY_DIR, "state.json");
   let state = readJSON(statePath, {
     current_phase: "SCAN", research_phase: "SCAN", current_project: null,
@@ -1125,6 +1122,9 @@ async function main() {
     cycle_count: 0, investigated_slugs: [], scan_top_5: [],
     preview_url: null, production_url: null, status: "SUCCESS",
   });
+
+  const nextRun = new Date(Date.now() + 5 * 3600000).toISOString().replace("T", " ").substring(0, 16) + " UTC";
+  await sendTelegram(`🚀 *ARIA session started* using ${MODEL}\n📍 Phase: *${state.current_phase}*\n🏗️ Project: *${state.current_project || "none"}*\n⏳ Next run: \`${nextRun}\``);
 
   log(`Phase: ${state.current_phase} | Week: ${state.week} | Project: ${state.current_project || "none"} | Refinement: ${state.refinement_iteration || 0}/3`);
 
@@ -1172,6 +1172,9 @@ async function main() {
 
   writeJSON(statePath, newState);
   log(`✅ Done → ${newState.current_phase}: ${newState.next_action}`);
+
+  const statusEmoji = newState.status === "SUCCESS" ? "🏁" : "❌";
+  await sendTelegram(`${statusEmoji} *Phase ${state.current_phase} ${newState.status}*\n📝 Action: ${newState.last_action}\n➡️ Next: *${newState.next_action}*`);
 }
 
 main().catch(console.error);
