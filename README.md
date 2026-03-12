@@ -125,6 +125,7 @@ aria-agent/
 
 ARIA is designed to stay within MiniMax's Starter limits:
 - **Model**: Uses `MiniMax-M2.5` for the best power/speed balance.
+- **Context Window**: 204,800 tokens.
 - **Handling 429s**: Implements exponential backoff (retries with increasing delays) if rate limited.
 - **RPM Management**: Adds mandatory inter-request delays to respect the 30 Requests Per Minute limit.
 - **Efficiency**: Only 3 scheduled runs per day to stay well under the 250 Requests Per Day quota.
