@@ -55,10 +55,17 @@ async function callAI(systemPrompt, userMessage, maxTokens = 8000) {
       return text;
 
     } catch (err) {
-      if (err?.status === 429) {
+      const isRetryable = err?.status === 429
+        || err?.code === "ECONNRESET" || err?.code === "ECONNREFUSED"
+        || err?.code === "ETIMEDOUT"  || err?.code === "ENOTFOUND"
+        || err?.message?.toLowerCase().includes("connection error")
+        || err?.message?.toLowerCase().includes("network");
+      if (isRetryable) {
         attempt++;
-        const wait = Math.pow(2, attempt) * 30_000; // 30s, 60s, 120s
-        log(`  ⚠️  Rate limited (429). Waiting ${wait/1000}s...`);
+        const wait = err?.status === 429
+          ? Math.pow(2, attempt) * 30_000  // 30s, 60s, 120s for rate limits
+          : Math.pow(2, attempt) * 10_000; // 10s, 20s, 40s for connection errors
+        log(`  ⚠️  ${err?.status === 429 ? "Rate limited (429)" : `Connection error (${err?.code || err?.message?.slice(0, 40)})`}. Waiting ${wait/1000}s... (attempt ${attempt}/${MAX_RETRIES})`);
         await sleep(wait);
       } else {
         throw err;

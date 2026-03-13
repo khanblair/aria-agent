@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"FATAL: Connection error\\\\|SCAN FAILED\\\\|Connection error\" E:/aria-agent/ --include=*.js --include=*.ts -l)"
+    ]
+  }
+}
