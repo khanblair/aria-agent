@@ -1,42 +1,28 @@
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import React from "react";
+import Link from "next/link";
 
-const Sidebar = () => {
-  const pathname = usePathname();
+interface SidebarProps {
+  languages: { id: string; name: string }[];
+}
 
-  const navItems = [
-    { href: '/', label: 'Home' },
-    { href: '/learn', label: 'Learn' },
-    { href: '/search', label: 'Search' },
-    { href: '/profile', label: 'Profile' },
-  ];
-
+export default function Sidebar({ languages }: SidebarProps) {
   return (
-    <aside
-      className="w-64 h-full bg-gray-50 dark:bg-gray-900 p-4"
+    <nav
+      className="w-64 h-full bg-gray-50 dark:bg-gray-800 p-4 overflow-y-auto"
       role="navigation"
-      aria-label="Sidebar navigation"
+      aria-label="Language navigation"
     >
       <ul className="space-y-2">
-        {navItems.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className={`block px-3 py-2 rounded ${
-                pathname === item.href
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800'
-              }`}
-              aria-current={pathname === item.href ? 'page' : undefined}
-            >
-              {item.label}
+        {languages.map((lang) => (
+          <li key={lang.id}>
+            <Link href={`/${lang.id}`}>
+              <a className="block px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                {lang.name}
+              </a>
             </Link>
           </li>
         ))}
       </ul>
-    </aside>
+    </nav>
   );
-};
-
-export default Sidebar;
+}

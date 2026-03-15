@@ -1,31 +1,18 @@
-import React from 'react';
-import Link from 'next/link';
-import DarkModeToggle from './DarkModeToggle';
+import React from "react";
 
-const Header = () => (
-  <header className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-800 shadow">
-    {/* Logo with descriptive alt text */}
-    <Link href="/" aria-label="Home">
-      <img src="/logo.svg" alt="Blair’s Academy logo" className="h-8 w-auto" />
-    </Link>
-
-    <nav aria-label="Main navigation">
-      <ul className="flex space-x-4">
-        <li>
-          <Link href="/about" className="text-gray-700 dark:text-gray-200 hover:underline">
-            About
-          </Link>
-        </li>
-        <li>
-          <Link href="/contact" className="text-gray-700 dark:text-gray-200 hover:underline">
-            Contact
-          </Link>
-        </li>
-      </ul>
-    </nav>
-
-    <DarkModeToggle />
-  </header>
-);
+const Header: React.FC = () => {
+  return (
+    <header className="bg-gray-100 dark:bg-gray-900 py-6">
+      <div className="container mx-auto px-4 text-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          Blair&apos;s Academy
+        </h1>
+        <p className="mt-2 text-lg text-gray-700 dark:text-gray-300">
+          Programming language API docs, simplified
+        </p>
+      </div>
+    </header>
+  );
+};
 
 export default Header;

@@ -1,11 +1,11 @@
-import LanguageSelector from '@/components/LanguageSelector';
+import LanguageSelector from "../components/LanguageSelector";
 
 export default function Home() {
   return (
-    <section className="container mx-auto py-12">
-      <h1 className="text-3xl font-bold mb-6 text-center">
-        Choose a language to explore its API
-      </h1>
+    <section className="container mx-auto py-8">
+      <h2 className="text-2xl font-semibold mb-6 text-center">
+        Choose a language to explore
+      </h2>
       <LanguageSelector />
     </section>
   );

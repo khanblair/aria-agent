@@ -2,9 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['assets.vercel.com', 'cdn.jsdelivr.net', 'raw.githubusercontent.com'],
+    // If you ever serve remote icons, list the domains here.
+    domains: [],
   },
-  // Enable SWC minification for better performance
+  // Defensive fallback for any future env vars.
+  env: {
+    NEXT_PUBLIC_API_BASE:
+      process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3000/api",
+  },
+  // Enable SWC minification for better performance.
   swcMinify: true,
 };
 

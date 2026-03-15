@@ -1,26 +1,33 @@
-import React from 'react';
+import React from "react";
 
 interface LanguageCardProps {
   language: string;
   displayName: string;
   icon: string;
+  description: string;
 }
 
 const LanguageCard: React.FC<LanguageCardProps> = ({
   language,
   displayName,
   icon,
+  description,
 }) => {
   return (
-    <article
-      className="flex flex-col items-center p-4 rounded-lg shadow hover:shadow-lg transition"
-      aria-label={`Language card for ${displayName}`}
+    <a
+      href={`/${language}`}
+      className="group flex flex-col items-center p-4 rounded-lg bg-white dark:bg-gray-800 shadow hover:shadow-lg transition"
+      aria-label={`Open documentation for ${displayName}`}
     >
-      {/* Alt text is required for screen‑readers */}
-      <img src={icon} alt={`Icon representing ${displayName}`} className="w-12 h-12 mb-2" />
-      <h3 className="text-lg font-medium">{displayName}</h3>
-      <p className="text-sm text-gray-500">{language}</p>
-    </article>
+      {/* Explicit alt text for the icon */}
+      <img src={icon} alt={`${displayName} logo`} className="w-12 h-12 mb-2" />
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        {displayName}
+      </h2>
+      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 text-center">
+        {description}
+      </p>
+    </a>
   );
 };
 
