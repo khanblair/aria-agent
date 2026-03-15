@@ -2,7 +2,7 @@
 
 import { FC } from 'react';
 import { ClipboardIcon } from '@heroicons/react/24/outline';
-import { APIInfo } from '@/lib/fetchers/python';
+import { APIInfo } from '../lib/fetchers/python';
 
 type DocViewerProps = {
   api: APIInfo;

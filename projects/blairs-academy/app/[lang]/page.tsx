@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { PythonAPIList } from '@/lib/fetchers/python';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { PythonAPIList } from '../../lib/fetchers/python';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 
 export default function LanguagePage({ params }: { params: { lang: string } }) {
   const { lang } = params;
