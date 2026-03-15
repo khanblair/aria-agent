@@ -629,6 +629,108 @@ Write ALL files. Use // FILE: path/to/file.ts format.`;
 
 // ─── BUILD_LANGUAGE ───────────────────────────────────────────────────────────
 
+// ─── LEARN (Incremental) ───────────────────────────────────────────────────
+
+async function runLearn(state, ctx) {
+  log("📚 LEARN - Incremental learning (10-15 APIs at a time)");
+
+  const projectPath = projectDir("blairs-academy");
+  const specPath = path.join(SPECS_DIR, "blairs-academy.md");
+
+  if (!fs.existsSync(specPath)) {
+    throw new Error("SPEC.md not found. Run DEFINE phase first.");
+  }
+
+  // Determine which language to learn
+  const learningProgress = state.learning_progress || {};
+  const languages = ["python", "javascript", "go", "rust", "typescript"];
+
+  // Find next language to learn
+  let currentLang = state.current_language || "python";
+  if (learningProgress[currentLang]?.status === "completed") {
+    currentLang = languages.find(l => learningProgress[l]?.status !== "completed") || "python";
+  }
+
+  log(`   Learning: ${currentLang}`);
+
+  // Get priority list for this language
+  const priorities = {
+    python: ["print", "len", "range", "enumerate", "zip", "os", "sys", "json", "collections", "itertools", "datetime", "requests", "str", "list", "dict"],
+    javascript: ["Array", "Object", "String", "Promise", "Map", "Set", "JSON", "Math", "Date", "RegExp", "Error", "console", "fetch", "setTimeout"],
+    go: ["fmt", "strings", "os", "json", "http", "io", "bufio", "time", "errors", "bytes", "slice", "map"],
+    rust: ["Vec", "Option", "Result", "String", "str", "HashMap", "Box", "Rc", "Arc", "Cell", "RefCell", "iter", "panic"],
+    typescript: ["Array", "String", "Number", "Promise", "Map", "Set", "Partial", "Required", "Pick", "Omit", "Record", "Readonly"]
+  };
+
+  const priorityList = priorities[currentLang] || priorities.python;
+
+  // Get already learned (from state or Convex query would be ideal)
+  const learned = learningProgress[currentLang]?.learned || 0;
+  const toLearn = priorityList.slice(learned, learned + 10); // 10-15 at a time
+
+  if (toLearn.length === 0) {
+    log(`   All APIs learned for ${currentLang}!`);
+    // Move to next language
+    const nextLang = languages.find(l => learningProgress[l]?.status !== "completed");
+    if (!nextLang) {
+      return { ...state, current_phase: "POLISH", last_action: "All languages learned", next_action: "Polish" };
+    }
+    return { ...state, current_language: nextLang, current_phase: "LEARN" };
+  }
+
+  log(`   APIs to learn: ${toLearn.join(", ")}`);
+
+  const prompt = `You are teaching Blair's Academy. Learn these ${currentLang} APIs incrementally.
+
+## Language: ${currentLang.toUpperCase()}
+## APIs to learn (10-15):
+${toLearn.map((api, i) => `${i + 1}. ${api}`).join("\n")}
+
+## Task
+1. For each API, fetch its documentation from official sources
+2. Create/update the component that displays this API in the app
+3. Add code examples that users can copy-paste
+
+## Files to update:
+- app/[lang]/page.tsx - Add links to new APIs
+- components/DocViewer.tsx - Add display for these APIs
+- lib/fetchers/${currentLang}.ts - Add fetcher logic (if needed)
+
+## IMPORTANT:
+- Only add 10-15 APIs per run
+- Each API needs: name, description, parameters, return type, example
+- Store in "learning" status in mock Convex (we'll sync later)
+
+Write the code. Use // FILE: format.`;
+
+  const result = await callAI(ctx.system, prompt, 12000);
+
+  // Parse and write files
+  const written = parseAndWriteFiles(result, "blairs-academy");
+  log(`   📦 ${written.length} files updated`);
+
+  // Update learning progress
+  const newProgress = { ...learningProgress };
+  newProgress[currentLang] = {
+    learned: learned + toLearn.length,
+    total: priorityList.length,
+    status: learned + toLearn.length >= priorityList.length ? "completed" : "in_progress",
+    lastLearnedAt: new Date().toISOString()
+  };
+
+  // Find next language
+  const nextLang = languages.find(l => newProgress[l]?.status !== "completed") || null;
+
+  return {
+    ...state,
+    learning_progress: newProgress,
+    current_language: nextLang || currentLang,
+    current_phase: nextLang ? "LEARN" : "VALIDATE",
+    last_action: `Learned ${toLearn.length} ${currentLang} APIs`,
+    next_action: nextLang ? `Learn ${nextLang}` : "Validate build"
+  };
+}
+
 // ─── VALIDATE ─────────────────────────────────────────────────────────────────
 
 async function runValidate(state, ctx) {
@@ -1321,6 +1423,7 @@ async function main() {
       case "DEFINE":          newState = await runDefine(state, ctx);         break;
       case "DESIGN_RESEARCH": newState = await runDesignResearch(state, ctx); break;
       case "BUILD_CORE":      newState = await runBuildCore(state, ctx);      break;
+      case "LEARN":          newState = await runLearn(state, ctx);         break;
       case "VALIDATE":        newState = await runValidate(state, ctx);       break;
       case "DEPLOY_STAGING":  newState = await runDeployStaging(state);      break;
       case "DEPLOY_PROD":     newState = await runDeployProd(state);          break;
