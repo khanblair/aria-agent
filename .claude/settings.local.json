@@ -3,7 +3,8 @@
     "allow": [
       "Bash(grep -r \"FATAL: Connection error\\\\|SCAN FAILED\\\\|Connection error\" E:/aria-agent/ --include=*.js --include=*.ts -l)",
       "Bash(cd E:/aria-agent/agent && node --check runner.js 2>&1 | head -20)",
-      "Bash(cd E:/aria-agent/agent && node --check runner.js 2>&1)"
+      "Bash(cd E:/aria-agent/agent && node --check runner.js 2>&1)",
+      "Bash(cd E:/aria-agent/projects/blairs-academy && npx vercel --prod --yes 2>&1)"
     ]
   }
 }
