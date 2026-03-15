@@ -341,7 +341,7 @@ async function runSynthesize(state, ctx) {
   }).join("\n\n---\n\n");
   const resp = await callAI(readPrompt(),
     `PHASE: SYNTHESIZE. Investigations:\n${investigations}\nBacklog: ${JSON.stringify(ctx.backlog)}
-Include // SYNTHESIS_COMPLETE block.`, 10000);
+Include // SYNTHESIS_COMPLETE block.`, 8000);
   fs.writeFileSync(path.join(RESEARCH_DIR, "synthesis.md"), resp);
   const sc = extractJSON(resp, "SYNTHESIS_COMPLETE");
   return { ...state, research_phase: "DECIDE", synthesis_chosen: sc?.chosen_slug,
@@ -459,7 +459,7 @@ Output design direction as:
 // FILE: agent/design/blairs-academy-design.md
 [Key design patterns with colors, fonts, component suggestions]`;
 
-  const resp = await callAI(ctx.system, prompt, 10000);
+  const resp = await callAI(ctx.system, prompt, 8000);
 
   // Save design research
   fs.mkdirSync(DESIGN_DIR, { recursive: true });
@@ -492,7 +492,7 @@ ${JSON.stringify(ctx.backlog.map(b => ({ slug: b.slug, title: b.title })))}
 
 Generate ALL production files. Use // FILE: format.
 Implement the design research — specific colors, fonts, layout patterns.
-End with // BACKLOG_UPDATE block.`, 16000);
+End with // BACKLOG_UPDATE block.`, 8000);
 
   const written = parseAndWriteFiles(resp, state.current_project);
   applyBacklogUpdate(resp);
@@ -610,7 +610,7 @@ export async function GET(request: Request, { params }: { params: { lang: string
 
 Write ALL files. Use // FILE: path/to/file.ts format.`;
 
-  const result = await callAI(ctx.system, prompt, 16000);
+  const result = await callAI(ctx.system, prompt, 8000);
 
   // Parse and write files
   const written = parseAndWriteFiles(result, "blairs-academy");
@@ -703,7 +703,7 @@ ${toLearn.map((api, i) => `${i + 1}. ${api}`).join("\n")}
 
 Write the code. Use // FILE: format.`;
 
-  const result = await callAI(ctx.system, prompt, 12000);
+  const result = await callAI(ctx.system, prompt, 8000);
 
   // Parse and write files
   const written = parseAndWriteFiles(result, "blairs-academy");
@@ -1003,7 +1003,7 @@ Apply ALL fixes from the design critique AND schema changes.
 Output ONLY the changed files using // FILE: format.
 Add // CHANGED: [what changed] comment at the top of each modified file.
 
-Include // REBUILD_COMPLETE { "iteration", "files_changed", "fixes_applied" }`, 12000);
+Include // REBUILD_COMPLETE { "iteration", "files_changed", "fixes_applied" }`, 8000);
 
   const written = parseAndWriteFiles(resp, state.current_project);
 
@@ -1225,7 +1225,7 @@ ${ctx.spec?.slice(0, 500) || "N/A"}
 
 Run through the full POLISH checklist. Fix whatever you find.
 Output fixed files using // FILE: format.
-Include // POLISH_COMPLETE { "performance_issues_fixed", "accessibility_issues_fixed", "copy_improvements", "ready_for_reflect" }`, 10000);
+Include // POLISH_COMPLETE { "performance_issues_fixed", "accessibility_issues_fixed", "copy_improvements", "ready_for_reflect" }`, 8000);
 
   const written = parseAndWriteFiles(resp, state.current_project);
   const pc = extractJSON(resp, "POLISH_COMPLETE");
