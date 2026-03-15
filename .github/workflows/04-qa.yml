@@ -36,6 +36,19 @@ jobs:
       - name: Install agent deps
         run: cd agent && npm install
 
+      - name: Bootstrap state
+        run: |
+          mkdir -p agent/memory
+          if [ ! -f agent/memory/state.json ]; then
+            cat > agent/memory/state.json << 'EOF'
+          {
+            "current_phase": "POLISH",
+            "current_project": "blairs-academy",
+            "status": "READY"
+          }
+          EOF
+          fi
+
       - name: Show current state
         run: |
           echo "Current phase:"

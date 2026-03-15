@@ -40,6 +40,30 @@ jobs:
       - name: Install agent deps
         run: cd agent && npm install
 
+      - name: Bootstrap state
+        run: |
+          mkdir -p agent/memory
+          if [ ! -f agent/memory/state.json ]; then
+            cat > agent/memory/state.json << 'EOF'
+          {
+            "current_phase": "BUILD_CORE",
+            "current_project": "blairs-academy",
+            "current_language": "python",
+            "week": 1,
+            "learning_progress": {
+              "python": { "learned": 0, "total": 50, "status": "not_started" },
+              "javascript": { "learned": 0, "total": 40, "status": "pending" },
+              "go": { "learned": 0, "total": 30, "status": "pending" },
+              "rust": { "learned": 0, "total": 30, "status": "pending" },
+              "typescript": { "learned": 0, "total": 30, "status": "pending" }
+            },
+            "preview_url": null,
+            "production_url": null,
+            "status": "READY"
+          }
+          EOF
+          fi
+
       - name: Show current state
         run: |
           echo "Current phase:"
