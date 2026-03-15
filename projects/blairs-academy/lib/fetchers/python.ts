@@ -146,3 +146,7 @@ export async function fetchPythonAPIs(): Promise<APIInfo[]> {
   // Return the static list for the UI to consume
   return PythonAPIList;
 }
+
+export default {
+  fetchDocs: fetchPythonAPIs,
+};

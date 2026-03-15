@@ -1,11 +1,9 @@
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { PythonAPIList } from '@/lib/fetchers/python';
-import { Card } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
-export default function LanguagePage() {
-  const router = useRouter();
-  const { lang } = router.query as { lang: string };
+export default function LanguagePage({ params }: { params: { lang: string } }) {
+  const { lang } = params;
 
   // Only render Python docs for now – other languages will follow the same pattern
   if (lang !== 'python') {
@@ -28,10 +26,14 @@ export default function LanguagePage() {
             className="block"
           >
             <Card className="h-full hover:shadow-lg transition-shadow">
-              <h2 className="text-xl font-semibold">{api.title}</h2>
-              <p className="text-sm text-gray-600 mt-2 line-clamp-3">
-                {api.description}
-              </p>
+              <CardHeader>
+                <CardTitle>{api.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mt-2 line-clamp-3">
+                  {api.description}
+                </p>
+              </CardContent>
             </Card>
           </Link>
         ))}

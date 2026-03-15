@@ -1,5 +1,7 @@
+"use client";
+
 import { FC } from 'react';
-import { ClipboardCopyIcon } from '@heroicons/react/24/outline';
+import { ClipboardIcon } from '@heroicons/react/24/outline';
 import { APIInfo } from '@/lib/fetchers/python';
 
 type DocViewerProps = {
@@ -16,7 +18,7 @@ export const DocViewer: FC<DocViewerProps> = ({ api }) => {
           className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
           title="Copy example to clipboard"
         >
-          <ClipboardCopyIcon className="h-5 w-5" />
+          <ClipboardIcon className="h-5 w-5" />
           Copy example
         </button>
       </header>

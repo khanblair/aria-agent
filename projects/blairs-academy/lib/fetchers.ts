@@ -12,4 +12,6 @@ export const fetchers = {
   typescript,
 };
 
+export type Language = keyof typeof fetchers;
+
 export default fetchers;

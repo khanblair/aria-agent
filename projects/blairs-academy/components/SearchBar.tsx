@@ -1,3 +1,5 @@
+"use client";
+
 import { FC, ChangeEvent } from 'react';
 import { FiSearch } from 'react-icons/fi';
 

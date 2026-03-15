@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
 
 export default defineSchema({
   docs_cache: defineTable({
@@ -9,7 +10,7 @@ export default defineSchema({
     content: v.string(),
     example: v.string(),
     status: v.union(v.literal('learning'), v.literal('learned')),
-    priority: v.int32(),
+    priority: v.number(),
     fetchedAt: v.string(),
   })
     .index('byLanguage', ['language'])
@@ -20,8 +21,8 @@ export default defineSchema({
     displayName: v.string(),
     icon: v.string(),
     color: v.string(),
-    totalLearned: v.int32(),
-    totalAvailable: v.int32(),
+    totalLearned: v.number(),
+    totalAvailable: v.number(),
     status: v.union(v.literal('not_started'), v.literal('in_progress'), v.literal('completed')),
     lastLearnedAt: v.string(),
   }).index('byLanguage', ['language']),
