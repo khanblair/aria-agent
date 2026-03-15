@@ -109,7 +109,7 @@ function build() {
 </html>`;
 
   fs.writeFileSync(path.join(OUT_DIR, 'index.html'), html);
-  console.log(`✅ Journal built → docs/_site/index.html (${entries.length} entries)`);
+  console.log(`✅ Journal built → ${path.join(OUT_DIR, 'index.html')} (${entries.length} entries)`);
 }
 
 build();
