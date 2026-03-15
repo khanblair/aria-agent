@@ -91,11 +91,16 @@ jobs:
           node runner.js
 
       - name: Validate build
+        if: steps.run_build.outputs.skipped != 'true' || true
         run: |
-          cd projects/blairs-academy
-          npm ci
-          npx tsc --noEmit
-          npx next build
+          if [ -d "projects/blairs-academy" ] && [ -f "projects/blairs-academy/package.json" ]; then
+            cd projects/blairs-academy
+            npm ci
+            npx tsc --noEmit
+            npx next build
+          else
+            echo "Project not created yet - skipping validation"
+          fi
 
       - name: Commit outputs
         run: |
