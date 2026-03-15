@@ -1,25 +1,23 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import { FC } from 'react';
 
-type Props = {
+interface LanguageCardProps {
   language: string;
-  displayName: string;
-  color: string;
+  icon: string;
+  onSelect?: () => void;
+}
+
+const LanguageCard: FC<LanguageCardProps> = ({ language, icon, onSelect }) => {
+  return (
+    <button
+      onClick={onSelect}
+      className="flex flex-col items-center p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+    >
+      {/* Added descriptive alt text for accessibility */}
+      <Image src={icon} alt={`${language} icon`} width={64} height={64} />
+      <h2 className="mt-2 text-lg font-medium">{language}</h2>
+    </button>
+  );
 };
 
-export default function LanguageCard({ language, displayName, color }: Props) {
-  return (
-    <Link href={`/${language}`} className="block">
-      <div className={`rounded-lg p-4 shadow-md hover:shadow-lg transition ${color}`}>
-        {/* Added alt text for the language icon */}
-        <Image
-          src={`/icons/${language}.svg`}
-          width={48}
-          height={48}
-          alt={`${displayName} icon`}
-        />
-        <h2 className="mt-2 text-center text-lg font-medium">{displayName}</h2>
-      </div>
-    </Link>
-  );
-}
+export default LanguageCard;

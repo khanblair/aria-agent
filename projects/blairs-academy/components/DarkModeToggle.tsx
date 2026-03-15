@@ -1,30 +1,21 @@
-import { useEffect, useState } from 'react';
-import { SunIcon, MoonIcon } from '@heroicons/react/solid';
+import { FC } from 'react';
+import { FiSun, FiMoon } from 'react-icons/fi';
+import { useTheme } from 'next-themes';
 
-export default function DarkModeToggle() {
-  // Guard against SSR where window is undefined
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    typeof window !== 'undefined'
-      ? (localStorage.getItem('theme') as 'light' | 'dark') ?? 'light'
-      : 'light'
-  );
+const DarkModeToggle: FC = () => {
+  const { theme, setTheme } = useTheme();
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', theme);
-    }
-  }, [theme]);
-
-  const toggle = () => setTheme(theme === 'light' ? 'dark' : 'light');
+  const toggle = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   return (
     <button
       onClick={toggle}
-      className="p-2 rounded-full bg-gray-200 dark:bg-gray-700"
       aria-label="Toggle dark mode"
+      className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
     >
-      {theme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
+      {theme === 'dark' ? <FiSun /> : <FiMoon />}
     </button>
   );
-}
+};
+
+export default DarkModeToggle;

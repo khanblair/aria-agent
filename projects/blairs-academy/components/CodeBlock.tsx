@@ -1,28 +1,48 @@
-import React from "react";
-import Prism from "prismjs";
-import "prismjs/themes/prism-tomorrow.css";
+import { FC, useState } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { FiCopy, FiCheck } from 'react-icons/fi';
 
 interface CodeBlockProps {
-  language: string;
   code: string;
+  language: string;
 }
 
-export default function CodeBlock({ language, code }: CodeBlockProps) {
-  const highlighted = Prism.highlight(
-    code,
-    Prism.languages[language] || Prism.languages.javascript,
-    language
-  );
+/**
+ * Accessible code block with keyboard focus and a copy‑to‑clipboard button.
+ */
+const CodeBlock: FC<CodeBlockProps> = ({ code, language }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
-    <pre
-      className="rounded bg-gray-900 text-gray-100 p-4 overflow-x-auto focus:outline-none"
-      tabIndex={0}
+    <div
+      tabIndex={0}               // makes the block focusable via keyboard
+      className="relative rounded-md overflow-hidden border border-gray-200 dark:border-gray-700"
     >
-      <code
-        dangerouslySetInnerHTML={{ __html: highlighted }}
-        className={`language-${language}`}
-      />
-    </pre>
+      {/* Copy button – visible on hover/focus */}
+      <button
+        onClick={handleCopy}
+        aria-label="Copy code to clipboard"
+        className="absolute top-2 right-2 p-1 bg-gray-100 dark:bg-gray-800 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+      >
+        {copied ? <FiCheck className="text-green-500" /> : <FiCopy />}
+      </button>
+
+      <SyntaxHighlighter
+        language={language}
+        style={oneDark}
+        customStyle={{ margin: 0, padding: '1rem' }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
   );
-}
+};
+
+export default CodeBlock;

@@ -1,13 +1,19 @@
 /** @type {import('next').NextConfig} */
-const { NEXT_PUBLIC_API_URL } = process.env;
-
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
-  // Provide a safe fallback for the env variable
+  // Defensive fallback for any future env variables
   env: {
-    NEXT_PUBLIC_API_URL: NEXT_PUBLIC_API_URL ?? '',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? '',
   },
   images: {
-    domains: ['assets.vercel.com'],
+    // Allow external icons if needed
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
 };
+
+module.exports = nextConfig;

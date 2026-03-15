@@ -1,31 +1,37 @@
-import { useState } from 'react';
-import { MagnifyingGlassIcon } from '@heroicons/react/solid';
+import { FC, ChangeEvent } from 'react';
+import { FiSearch } from 'react-icons/fi';
 
-export default function SearchBar({ onSearch }: { onSearch: (term: string) => void }) {
-  const [term, setTerm] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(term.trim());
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex items-center w-full max-w-md mx-auto">
-      <input
-        type="text"
-        value={term}
-        onChange={(e) => setTerm(e.target.value)}
-        placeholder="Search APIs (e.g., Array.map or os.listdir)"
-        className="flex-1 rounded-l-md border border-gray-300 p-2 focus:outline-none"
-        aria-label="Search documentation"
-      />
-      <button
-        type="submit"
-        className="rounded-r-md bg-blue-600 p-2 text-white hover:bg-blue-700"
-        aria-label="Submit search"
-      >
-        <MagnifyingGlassIcon className="h-5 w-5" />
-      </button>
-    </form>
-  );
+interface SearchBarProps {
+  placeholder?: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
 }
+
+/**
+ * Accessible search input with proper ARIA attributes.
+ */
+const SearchBar: FC<SearchBarProps> = ({
+  placeholder = 'Search documentation...',
+  value,
+  onChange,
+}) => {
+  return (
+    <div className="relative w-full max-w-md">
+      <input
+        type="search"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        aria-label="Search documentation"
+        aria-describedby="search-help"
+        className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      <p id="search-help" className="sr-only">
+        Type to search API documentation across all supported languages.
+      </p>
+    </div>
+  );
+};
+
+export default SearchBar;
