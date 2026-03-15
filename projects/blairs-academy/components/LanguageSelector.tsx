@@ -1,23 +1,34 @@
-import Link from 'next/link';
-import { languages } from '@/lib/constants';
+import React from 'react';
+import { useRouter } from 'next/router';
+import LanguageCard from './LanguageCard';
 
-export default function LanguageSelector() {
+const languages = [
+  { language: 'python', displayName: 'Python', icon: '/icons/python.svg' },
+  { language: 'javascript', displayName: 'JavaScript', icon: '/icons/js.svg' },
+  // Add more languages as needed
+];
+
+const LanguageSelector = () => {
+  const router = useRouter();
+
+  const handleSelect = (lang: string) => {
+    router.push(`/${lang}`);
+  };
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <section aria-label="Select a programming language" className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {languages.map((lang) => (
-        <Link
-          key={lang.id}
-          href={`/${lang.id}`}
-          className="flex flex-col items-center p-4 border rounded hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800"
+        <button
+          key={lang.language}
+          onClick={() => handleSelect(lang.language)}
+          className="focus:outline-none"
+          aria-label={`Open ${lang.displayName} documentation`}
         >
-          <img
-            src={lang.icon}
-            alt={`${lang.displayName} logo`}
-            className="h-12 w-12 mb-2"
-          />
-          <span className="font-medium">{lang.displayName}</span>
-        </Link>
+          <LanguageCard {...lang} />
+        </button>
       ))}
-    </div>
+    </section>
   );
-}
+};
+
+export default LanguageSelector;

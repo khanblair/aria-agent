@@ -1,12 +1,14 @@
-import { parsePythonDocs } from '@/lib/parsers/python';
-import { DOCS_SOURCE_URL } from '@/lib/constants';
+import { fetch } from 'undici';
 
-export async function fetchDocsForLanguage(lang: 'python') {
-  // Example: fetch the built‑ins page
-  const response = await fetch(`${DOCS_SOURCE_URL}/python/${lang}/builtins.json`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch Python docs: ${response.status}`);
+const PYPI_BASE = process.env.PYPI_BASE_URL ?? 'https://pypi.org/pypi';
+
+export async function fetchPythonPackageDocs(pkg: string): Promise<string> {
+  const url = `${PYPI_BASE}/${encodeURIComponent(pkg)}/json`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch docs for ${pkg}: ${res.status}`);
   }
-  const raw = await response.json();
-  return parsePythonDocs(raw);
+  const data = await res.json();
+  // Simplify to a markdown‑ready string
+  return data.info?.description ?? 'No description available.';
 }
