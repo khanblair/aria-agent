@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd projects/blairs-academy && npm install && npm run build",
+  "outputDirectory": "projects/blairs-academy/.next",
+  "framework": "nextjs"
+}
