@@ -1,0 +1,76 @@
+name: "✅ 04-QA"
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Verbose logging'
+        type: boolean
+        default: false
+  workflow_run:
+    workflows: ["🚀 03-Deploy"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  qa:
+    name: QA & Polish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+      pages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install agent deps
+        run: cd agent && npm install
+
+      - name: Show current state
+        run: |
+          echo "Current phase:"
+          python3 -c "import json; print(json.load(open('agent/memory/state.json')).get('current_phase','?'))"
+
+      - name: Run POLISH phase
+        env:
+          GROQ_API_KEY1: ${{ secrets.GROQ_API_KEY1 }}
+          GROQ_API_KEY2: ${{ secrets.GROQ_API_KEY2 }}
+          GROQ_API_KEY3: ${{ secrets.GROQ_API_KEY3 }}
+          DEBUG_MODE: ${{ inputs.debug_mode }}
+        run: |
+          cd agent
+          python3 -c "
+          import json
+          s = json.load(open('memory/state.json'))
+          s['current_phase'] = 'POLISH'
+          json.dump(s, open('memory/state.json','w'), indent=2)
+          "
+          node runner.js
+
+      - name: Deploy Journal
+        run: |
+          cd docs && node build-journal.js
+
+      - name: Commit outputs
+        run: |
+          git config user.name "ARIA Agent"
+          git config user.email "aria@autonomous.build"
+          git add -A
+          PHASE=$(python3 -c "import json; print(json.load(open('agent/memory/state.json')).get('current_phase',''))" 2>/dev/null)
+          if git diff --staged --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "✅ [POLISH] QA complete"
+            git push
+            echo "✅ Committed"
+          fi

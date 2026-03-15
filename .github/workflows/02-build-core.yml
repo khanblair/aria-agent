@@ -1,0 +1,88 @@
+name: "🏗️ 02-Build-Core"
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Verbose logging'
+        type: boolean
+        default: false
+  workflow_run:
+    workflows: ["📋 01-Define"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  build-core:
+    name: Build Core & Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    permissions:
+      contents: write
+      pages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install CLI tools
+        run: |
+          npm install -g vercel@latest convex@latest
+
+      - name: Install agent deps
+        run: cd agent && npm install
+
+      - name: Show current state
+        run: |
+          echo "Current phase:"
+          python3 -c "import json; print(json.load(open('agent/memory/state.json')).get('current_phase','?'))"
+
+      - name: Run BUILD_CORE phase
+        env:
+          GROQ_API_KEY1: ${{ secrets.GROQ_API_KEY1 }}
+          GROQ_API_KEY2: ${{ secrets.GROQ_API_KEY2 }}
+          GROQ_API_KEY3: ${{ secrets.GROQ_API_KEY3 }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          DEBUG_MODE: ${{ inputs.debug_mode }}
+        run: |
+          cd agent
+          # Set to BUILD_CORE
+          python3 -c "
+          import json
+          s = json.load(open('memory/state.json'))
+          s['current_phase'] = 'BUILD_CORE'
+          json.dump(s, open('memory/state.json','w'), indent=2)
+          "
+          node runner.js
+
+      - name: Validate build
+        run: |
+          cd projects/blairs-academy
+          npm ci
+          npx tsc --noEmit
+          npx next build
+
+      - name: Commit outputs
+        run: |
+          git config user.name "ARIA Agent"
+          git config user.email "aria@autonomous.build"
+          git add -A
+          PHASE=$(python3 -c "import json; print(json.load(open('agent/memory/state.json')).get('current_phase',''))" 2>/dev/null)
+          if git diff --staged --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "🏗️ [BUILD_CORE] Next.js app created"
+            git push
+            echo "✅ Committed"
+          fi
