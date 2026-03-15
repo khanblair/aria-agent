@@ -40,6 +40,19 @@ jobs:
         run: |
           npm install -g vercel@latest convex@latest
 
+      - name: Bootstrap state
+        run: |
+          mkdir -p agent/memory
+          if [ ! -f agent/memory/state.json ]; then
+            cat > agent/memory/state.json << 'EOF'
+          {
+            "current_phase": "DEPLOY_PROD",
+            "current_project": "blairs-academy",
+            "status": "READY"
+          }
+          EOF
+          fi
+
       - name: Deploy Convex
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
