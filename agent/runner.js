@@ -37,7 +37,7 @@ function getNextKey() {
 }
 
 // Groq uses OpenAI-compatible API
-const MODEL = "compound-beta-2024-12-13"; // Groq compound model
+const MODEL = "groq/compound"; // Groq compound model
 
 // OpenAI-compatible client pointed at Groq
 const createGroqClient = (apiKey) => new OpenAI({
