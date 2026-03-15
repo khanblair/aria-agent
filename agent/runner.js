@@ -17,17 +17,37 @@ const DESIGN_DIR = path.join(__dirname, "design");
 const SPECS_DIR  = path.join(__dirname, "specs");
 const REFLECTIONS_DIR = path.join(__dirname, "reflections");
 
-const MODEL = "MiniMax-M2.5"; // MiniMax Starter plan — 100 prompts / 5h
+// Groq API Configuration - Round-robin across 3 keys for rate limit balancing
+const GROQ_KEYS = [
+  process.env.GROQ_API_KEY1,
+  process.env.GROQ_API_KEY2,
+  process.env.GROQ_API_KEY3
+].filter(Boolean);
 
-// OpenAI-compatible client pointed at MiniMax
-const ai = new OpenAI({
-  apiKey: process.env.MINIMAX_API_KEY,
-  baseURL: "https://api.minimax.io/v1",
+let currentKeyIndex = 0;
+
+function getNextKey() {
+  if (GROQ_KEYS.length === 0) {
+    throw new Error("No Groq API keys configured");
+  }
+  const key = GROQ_KEYS[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % GROQ_KEYS.length;
+  log(`   🔑 Using Groq key ${currentKeyIndex}/${GROQ_KEYS.length}`);
+  return key;
+}
+
+// Groq uses OpenAI-compatible API
+const MODEL = "compound-beta-2024-12-13"; // Groq compound model
+
+// OpenAI-compatible client pointed at Groq
+const createGroqClient = (apiKey) => new OpenAI({
+  apiKey: apiKey,
+  baseURL: "https://api.groq.com/openai/v1",
 });
 
-// Rate limit: 100 prompts / 5 hours = 1 per 3 min.
-// We enforce a mandatory 3-min delay AFTER every successful call.
-const INTER_REQUEST_DELAY = 180_000; // 3 minutes in ms
+// Rate limit: Groq free tier - use shorter delay for faster runs
+// Adjust based on actual rate limits
+const INTER_REQUEST_DELAY = 30_000; // 30 seconds between calls
 
 async function callAI(systemPrompt, userMessage, maxTokens = 8000) {
   const MAX_RETRIES = 3;
@@ -35,7 +55,10 @@ async function callAI(systemPrompt, userMessage, maxTokens = 8000) {
 
   while (attempt < MAX_RETRIES) {
     try {
-      log(`🧠 MiniMax [${MODEL}] → ${maxTokens} tokens (Attempt ${attempt + 1})`);
+      const apiKey = getNextKey();
+      const ai = createGroqClient(apiKey);
+
+      log(`🧠 Groq [${MODEL}] → ${maxTokens} tokens (Attempt ${attempt + 1})`);
       const response = await ai.chat.completions.create({
         model: MODEL,
         max_tokens: maxTokens,
@@ -48,7 +71,7 @@ async function callAI(systemPrompt, userMessage, maxTokens = 8000) {
       const text = response.choices[0]?.message?.content || "";
       log(`   ← ${text.length} chars`);
 
-      // Mandatory breather — respect 100 prompts/5h quota
+      // Mandatory breather — respect Groq rate limits
       log(`   ⏳ Waiting ${INTER_REQUEST_DELAY/1000}s before next call...`);
       await sleep(INTER_REQUEST_DELAY);
 
@@ -59,7 +82,8 @@ async function callAI(systemPrompt, userMessage, maxTokens = 8000) {
         || err?.code === "ECONNRESET" || err?.code === "ECONNREFUSED"
         || err?.code === "ETIMEDOUT"  || err?.code === "ENOTFOUND"
         || err?.message?.toLowerCase().includes("connection error")
-        || err?.message?.toLowerCase().includes("network");
+        || err?.message?.toLowerCase().includes("network")
+        || err?.message?.toLowerCase().includes("rate limit");
       if (isRetryable) {
         attempt++;
         const wait = err?.status === 429
@@ -72,7 +96,7 @@ async function callAI(systemPrompt, userMessage, maxTokens = 8000) {
       }
     }
   }
-  throw new Error(`Max retries exceeded for MiniMax [${MODEL}]`);
+  throw new Error(`Max retries exceeded for Groq [${MODEL}]`);
 }
 
 import https from "https";
@@ -237,7 +261,13 @@ function buildCtx(state) {
   if (state.current_project) {
     const sp = path.join(SPECS_DIR, `${state.current_project}.md`);
     if (fs.existsSync(sp)) ctx.spec = fs.readFileSync(sp, "utf8");
+    // Also try without .md extension for blairs-academy
+    const sp2 = path.join(SPECS_DIR, "blairs-academy.md");
+    if (fs.existsSync(sp2)) ctx.spec = fs.readFileSync(sp2, "utf8");
   }
+
+  // System prompt from AGENT_PROMPT.md
+  ctx.system = readPrompt();
 
   return ctx;
 }
@@ -352,71 +382,92 @@ Output: // FILE: memory/chosen_problem.json, ## COMMITMENT, // BACKLOG_SEED`);
 // ─── BUILD PHASES ─────────────────────────────────────────────────────────────
 
 async function runDefine(state, ctx) {
-  log("📋 DEFINE");
-  const resp = await callAI(readPrompt(),
-    `PHASE: DEFINE. Project: ${state.current_project}
-Chosen problem: ${JSON.stringify(ctx.chosen)}
-Synthesis: ${ctx.synthesis?.slice(0, 1000) || "N/A"}
-Lessons: ${JSON.stringify(ctx.lessons)}
-Output spec as:
-\`\`\`markdown
-// FILE: spec.md
-[spec]
-\`\`\``);
+  log("📋 DEFINE - Creating Blair's Academy specification");
 
-  const sm = resp.match(/```markdown\n\/\/ FILE: spec\.md\n([\s\S]*?)```/);
+  const prompt = `Create SPEC.md for Blair's Academy.
+
+## Project: Blair's Academy
+**Tagline:** Programming language API docs, simplified
+
+## Problem
+Developers struggle to find and understand API documentation across different programming languages.
+
+## Solution
+A unified platform presenting API docs in clean, copy-paste-ready format.
+
+## Target Users
+- Junior developers learning new languages
+- Experienced devs switching languages
+- Anyone needing quick API reference
+
+## Core Features to Implement
+1. Language selector (Python, JavaScript, Go, Rust, TypeScript)
+2. Searchable API endpoints
+3. Code examples with copy button
+4. Integration hints per language
+5. Dark/light mode
+6. Responsive design
+
+## Tech Stack
+- Next.js 14 + Tailwind CSS
+- Convex for backend data
+- Vercel deployment
+
+Write the full spec. Use this format:
+\`\`\`markdown
+// FILE: agent/specs/blairs-academy.md
+# Blair's Academy
+[full spec content]
+\`\`\``;
+
+  const resp = await callAI(ctx.system, prompt);
+
+  // Extract and write spec
+  const sm = resp.match(/```markdown\n\/\/ FILE: agent\/specs\/blairs-academy\.md\n([\s\S]*?)```/);
   if (sm) {
     fs.mkdirSync(SPECS_DIR, { recursive: true });
-    fs.writeFileSync(path.join(SPECS_DIR, `${state.current_project}.md`), sm[1].trim());
-    log("  📝 Spec written");
+    fs.writeFileSync(path.join(SPECS_DIR, "blairs-academy.md"), sm[1].trim());
+    log("  📝 Spec written to agent/specs/blairs-academy.md");
   }
+
   return { ...state, current_phase: "DESIGN_RESEARCH",
-    last_action: "Spec defined", next_action: "Research visual direction" };
+    last_action: "Spec defined for Blair's Academy",
+    next_action: "Research visual direction" };
 }
 
 // ─── NEW: DESIGN RESEARCH ─────────────────────────────────────────────────────
 
 async function runDesignResearch(state, ctx) {
-  log("🎨 DESIGN_RESEARCH — searching web for visual direction");
+  log("🎨 DESIGN_RESEARCH — searching web for doc display patterns");
 
-  // MiniMax-M2.5 has built-in web search — instruct it to use it
-  const resp = await callAI(readPrompt(),
-    `PHASE: DESIGN_RESEARCH. Project: ${state.current_project}
+  const prompt = `Research best practices for API documentation display.
 
-Spec:
-${ctx.spec || "(not found)"}
-
-You MUST search the web to find visual references and design patterns.
 Search for:
-1. "[product category from spec] website design 2024"
-2. "[product type] UI Dribbble"  
-3. "[competitor or similar product] website"
-4. "tailwind CSS [aesthetic] design examples"
-5. "[user persona] app design patterns"
+1. "best API documentation websites 2024"
+2. "DevDocs Dash documentation UI design"
+3. "MDN web docs design patterns"
+4. "developer documentation dark mode examples"
 
-Based on what you find, produce the full design research document following the
-DESIGN_RESEARCH format in your system prompt.
+Find patterns for:
+- Code block display with syntax highlighting
+- Search functionality for APIs
+- Language/framework switchers
+- Copy-paste code examples
+- Mobile responsive doc layouts
 
-Output the document as:
-\`\`\`markdown
-// FILE: design-research.md
-[content]
-\`\`\`
+Output design direction as:
+// FILE: agent/design/blairs-academy-design.md
+[Key design patterns with colors, fonts, component suggestions]`;
 
-Be SPECIFIC: exact hex codes, exact font names, URLs you actually found.`, 10000);
+  const resp = await callAI(ctx.system, prompt, 10000);
 
-  const dm = resp.match(/```markdown\n\/\/ FILE: design-research\.md\n([\s\S]*?)```/);
+  // Save design research
   fs.mkdirSync(DESIGN_DIR, { recursive: true });
-  if (dm) {
-    fs.writeFileSync(path.join(DESIGN_DIR, `${state.current_project}-design-research.md`), dm[1].trim());
-    log("  🎨 Design research written");
-  } else {
-    // Save full response as fallback
-    fs.writeFileSync(path.join(DESIGN_DIR, `${state.current_project}-design-research.md`), resp);
-  }
+  fs.writeFileSync(path.join(DESIGN_DIR, "blairs-academy-design.md"), resp);
+  log("  🎨 Design research written");
 
-  return { ...state, current_phase: "BUILD",
-    last_action: "Design research complete", next_action: "Generate all project code" };
+  return { ...state, current_phase: "BUILD_CORE",
+    last_action: "Design research complete", next_action: "Build core foundation" };
 }
 
 // ─── BUILD ────────────────────────────────────────────────────────────────────
@@ -450,6 +501,133 @@ End with // BACKLOG_UPDATE block.`, 16000);
   return { ...state, current_phase: "VALIDATE", refinement_iteration: 0,
     last_action: `Built ${written.length} files`, next_action: "Validate" };
 }
+
+// ─── BUILD_CORE ───────────────────────────────────────────────────────────────
+
+async function runBuildCore(state, ctx) {
+  log("🏗️ BUILD_CORE - Building complete Blair's Academy with dynamic fetching");
+
+  const projectPath = projectDir("blairs-academy");
+  const specPath = path.join(SPECS_DIR, "blairs-academy.md");
+
+  // Check spec exists
+  if (!fs.existsSync(specPath)) {
+    throw new Error("SPEC.md not found. Run DEFINE phase first.");
+  }
+
+  const spec = fs.readFileSync(specPath, "utf8");
+  const designPath = path.join(DESIGN_DIR, "blairs-academy-design.md");
+  const design = fs.existsSync(designPath) ? fs.readFileSync(designPath, "utf8") : "";
+
+  const prompt = `You are building Blair's Academy - a programming language documentation platform with DYNAMIC fetching.
+
+## SPEC.md
+${spec}
+
+## Design Direction
+${design}
+
+## CRITICAL: Dynamic Fetching Architecture
+This app must fetch docs from official sources at runtime, with caching to AVOID duplication:
+
+1. API Route: \`app/api/docs/[lang]/route.ts\`
+   - Receives language param (python, javascript, go, rust, typescript)
+   - Checks Convex cache FIRST (avoid duplicate fetches)
+   - Only fetches from official docs if cache is stale (>24h) or missing
+   - Stores fresh data in Convex
+
+2. Convex Schema for CACHING (avoid duplication):
+\`\`\`typescript
+defineSchema({
+  docs_cache: defineTable({
+    language: string,
+    endpoint: string,
+    title: string,
+    content: string,
+    example: string,
+    fetchedAt: string,  // timestamp to check freshness
+  }).index("language", ["language"]),
+})
+\`\`\`
+
+3. Data Sources:
+   - Python: https://docs.python.org/3/library/ or Pypi API
+   - JavaScript: https://developer.mozilla.org/api/v1/
+   - Go: https://pkg.go.dev/std
+   - Rust: https://doc.rust-lang.org/std/
+   - TypeScript: https://www.typescriptlang.org/docs/
+
+## Required Files
+
+### Core Setup:
+- package.json, tsconfig.json, next.config.js, tailwind.config.ts
+- app/layout.tsx - Main layout with language nav
+- app/globals.css - Tailwind + dark mode
+
+### Dynamic Pages:
+- app/page.tsx - Language selection grid (Python, JS, Go, Rust, TS)
+- app/[lang]/page.tsx - Dynamic doc page that fetches from /api/docs/[lang]
+
+### API Routes (DYNAMIC FETCHING):
+- app/api/docs/python/route.ts - Fetch Python docs
+- app/api/docs/javascript/route.ts - Fetch JS docs
+- app/api/docs/go/route.ts - Fetch Go docs
+- app/api/docs/rust/route.ts - Fetch Rust docs
+- app/api/docs/typescript/route.ts - Fetch TS docs
+
+### Convex:
+- convex/schema.ts - docs_cache table to avoid duplication
+- convex/functions.ts - Query functions for cached docs
+
+### Components:
+- components/CodeBlock.tsx - Syntax highlighted code with copy
+- components/LanguageSelector.tsx - Language switcher
+- components/SearchBar.tsx - Search docs
+- components/DarkModeToggle.tsx - Dark/light mode
+
+### Caching Logic (IMPORTANT):
+\`\`\`typescript
+// In API route - AVOID duplication by checking cache first
+export async function GET(request: Request, { params }: { params: { lang: string } }) {
+  const lang = params.lang;
+
+  // Check Convex cache first - avoid duplicate fetches
+  const cached = await convex.query("docs_cache:getByLanguage", { language: lang });
+
+  if (cached && !isStale(cached.fetchedAt)) {
+    return Response.json({ source: "cache", data: cached }); // Serve cached, no fetch
+  }
+
+  // Fetch from official source (only if needed)
+  const fresh = await fetchFromOfficialDocs(lang);
+
+  // Store in cache to avoid future duplication
+  await convex mutation("docs_cache:upsert", { language: lang, ...fresh });
+
+  return Response.json({ source: "fresh", data: fresh });
+}
+\`\`\`
+
+Write ALL files. Use // FILE: path/to/file.ts format.`;
+
+  const result = await callAI(ctx.system, prompt, 16000);
+
+  // Parse and write files
+  const written = parseAndWriteFiles(result, "blairs-academy");
+  log(`  📦 ${written.length} files`);
+
+  // Initialize git and install deps
+  shell(`cd ${projectPath} && git init && npm install && npx convex dev --init`);
+
+  return {
+    ...state,
+    current_phase: "VALIDATE",
+    last_action: "Built complete Blair's Academy with dynamic fetching",
+    next_action: "Validate build",
+  };
+}
+
+// ─── BUILD_LANGUAGE ───────────────────────────────────────────────────────────
 
 // ─── VALIDATE ─────────────────────────────────────────────────────────────────
 
@@ -523,9 +701,9 @@ async function runDeployStaging(state) {
 
   if (!process.env.VERCEL_TOKEN) {
     log("  No VERCEL_TOKEN — mock staging");
-    return { ...state, current_phase: "DESIGN_REFINE",
+    return { ...state, current_phase: "DEPLOY_PROD",
       preview_url: `https://${state.current_project}-preview.vercel.app`,
-      last_action: "Mock staging deploy", next_action: "Design refinement" };
+      last_action: "Mock staging deploy", next_action: "Deploy to production" };
   }
 
   // Deploy Convex if present
@@ -563,8 +741,8 @@ async function runDeployStaging(state) {
     type: "preview", smoke_tests: smokeTests,
   });
 
-  return { ...state, current_phase: "DESIGN_REFINE", preview_url: previewUrl,
-    last_action: `Staging: ${previewUrl || "failed"}`, next_action: "Critique design" };
+  return { ...state, current_phase: "DEPLOY_PROD", preview_url: previewUrl,
+    last_action: `Staging: ${previewUrl || "failed"}`, next_action: "Deploy to production" };
 }
 
 // ─── NEW: DESIGN REFINE ───────────────────────────────────────────────────────
@@ -1124,10 +1302,10 @@ async function main() {
   ensureDirectories();
   const statePath = path.join(MEMORY_DIR, "state.json");
   let state = readJSON(statePath, {
-    current_phase: "SCAN", research_phase: "SCAN", current_project: null,
-    week: 1, refinement_iteration: 0, cicd_fix_attempts: 0, ponder_count: 0,
-    cycle_count: 0, investigated_slugs: [], scan_top_5: [],
-    preview_url: null, production_url: null, status: "SUCCESS",
+    current_phase: "DEFINE", current_project: "blairs-academy",
+    week: 1, refinement_iteration: 0, cicd_fix_attempts: 0, cycle_count: 0,
+    languages_built: [], languages_pending: ["python", "javascript", "go", "rust", "typescript"],
+    preview_url: null, production_url: null, status: "READY",
   });
 
   const nextRun = new Date(Date.now() + 5 * 3600000).toISOString().replace("T", " ").substring(0, 16) + " UTC";
@@ -1140,27 +1318,17 @@ async function main() {
 
   try {
     switch (state.current_phase) {
-      case "SCAN":            newState = await runScan(state, ctx);           break;
-      case "INVESTIGATE":     newState = await runInvestigate(state, ctx);    break;
-      case "SYNTHESIZE":      newState = await runSynthesize(state, ctx);     break;
-      case "DECIDE":          newState = await runDecide(state, ctx);         break;
       case "DEFINE":          newState = await runDefine(state, ctx);         break;
       case "DESIGN_RESEARCH": newState = await runDesignResearch(state, ctx); break;
-      case "BUILD":           newState = await runBuild(state, ctx);          break;
+      case "BUILD_CORE":      newState = await runBuildCore(state, ctx);      break;
       case "VALIDATE":        newState = await runValidate(state, ctx);       break;
-      case "DEPLOY_STAGING":  newState = await runDeployStaging(state);       break;
-      case "DESIGN_REFINE":   newState = await runDesignRefine(state, ctx);   break;
-      case "SCHEMA_REFINE":   newState = await runSchemaRefine(state, ctx);   break;
-      case "REBUILD":         newState = await runRebuild(state, ctx);        break;
+      case "DEPLOY_STAGING":  newState = await runDeployStaging(state);      break;
       case "DEPLOY_PROD":     newState = await runDeployProd(state);          break;
       case "CICD_FIX":        newState = await runCICDFix(state, ctx);        break;
-      case "POLISH":          newState = await runPolish(state, ctx);         break;
-      case "REFLECT":         newState = await runReflect(state, ctx);        break;
-      case "PONDER":          newState = await runPonder(state, ctx);         break;
-      case "DISCOVER":        newState = await runDiscover(state, ctx);       break;
+      case "POLISH":          newState = await runPolish(state, ctx);        break;
       default:
-        log(`Unknown phase "${state.current_phase}" — resetting`);
-        newState = { ...state, current_phase: "SCAN", research_phase: "SCAN" };
+        log(`Unknown phase "${state.current_phase}" — resetting to DEFINE`);
+        newState = { ...state, current_phase: "DEFINE" };
     }
 
     newState.last_run = new Date().toISOString();
