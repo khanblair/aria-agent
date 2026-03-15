@@ -1,18 +1,11 @@
-import React from "react";
+import Image from 'next/image';
 
-const Header: React.FC = () => {
+export default function Header() {
   return (
-    <header className="bg-gray-100 dark:bg-gray-900 py-6">
-      <div className="container mx-auto px-4 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Blair&apos;s Academy
-        </h1>
-        <p className="mt-2 text-lg text-gray-700 dark:text-gray-300">
-          Programming language API docs, simplified
-        </p>
-      </div>
+    <header className="flex items-center p-4">
+      {/* Added alt text for accessibility */}
+      <Image src="/logo.png" width={40} height={40} alt="Blair’s Academy logo" />
+      <h1 className="ml-2 text-xl font-bold">Blair’s Academy</h1>
     </header>
   );
-};
-
-export default Header;
+}

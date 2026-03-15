@@ -1,29 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+import { SunIcon, MoonIcon } from '@heroicons/react/solid';
 
 export default function DarkModeToggle() {
-  const [isDark, setIsDark] = useState(false);
+  // Guard against SSR where window is undefined
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('theme') as 'light' | 'dark') ?? 'light'
+      : 'light'
+  );
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved) setIsDark(saved === "dark");
-    else setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
-  }, []);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', theme);
+    }
+  }, [theme]);
 
-  const toggle = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-  };
+  const toggle = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
   return (
     <button
       onClick={toggle}
-      aria-pressed={isDark}
+      className="p-2 rounded-full bg-gray-200 dark:bg-gray-700"
       aria-label="Toggle dark mode"
-      className="p-2 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
     >
-      {isDark ? "🌙" : "☀️"}
+      {theme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
     </button>
   );
 }

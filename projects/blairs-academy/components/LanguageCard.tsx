@@ -1,34 +1,25 @@
-import React from "react";
+import Image from 'next/image';
+import Link from 'next/link';
 
-interface LanguageCardProps {
+type Props = {
   language: string;
   displayName: string;
-  icon: string;
-  description: string;
-}
-
-const LanguageCard: React.FC<LanguageCardProps> = ({
-  language,
-  displayName,
-  icon,
-  description,
-}) => {
-  return (
-    <a
-      href={`/${language}`}
-      className="group flex flex-col items-center p-4 rounded-lg bg-white dark:bg-gray-800 shadow hover:shadow-lg transition"
-      aria-label={`Open documentation for ${displayName}`}
-    >
-      {/* Explicit alt text for the icon */}
-      <img src={icon} alt={`${displayName} logo`} className="w-12 h-12 mb-2" />
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-        {displayName}
-      </h2>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 text-center">
-        {description}
-      </p>
-    </a>
-  );
+  color: string;
 };
 
-export default LanguageCard;
+export default function LanguageCard({ language, displayName, color }: Props) {
+  return (
+    <Link href={`/${language}`} className="block">
+      <div className={`rounded-lg p-4 shadow-md hover:shadow-lg transition ${color}`}>
+        {/* Added alt text for the language icon */}
+        <Image
+          src={`/icons/${language}.svg`}
+          width={48}
+          height={48}
+          alt={`${displayName} icon`}
+        />
+        <h2 className="mt-2 text-center text-lg font-medium">{displayName}</h2>
+      </div>
+    </Link>
+  );
+}
