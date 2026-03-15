@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT        = path.join(__dirname, '..');
 const JOURNAL_DIR = path.join(__dirname, 'journal');   // docs/journal/
-const OUT_DIR     = path.join(__dirname, '_site');      // docs/_site/
+const OUT_DIR     = __dirname;                      // docs/
 
 // ─── Simple Static Site Generator ────────────────────────────────────────────
 

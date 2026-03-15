@@ -94,6 +94,9 @@ jobs:
             echo "Project not created yet - skipping validation"
           fi
 
+      - name: Build ARIA Journal
+        run: node docs/build-journal.js
+
       - name: Commit outputs
         run: |
           git config user.name "ARIA Agent"

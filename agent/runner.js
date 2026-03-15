@@ -1334,6 +1334,13 @@ ${je.backlog_thoughts || ""}
 - Live URL: [${url}](${url})
 `);
     log("  📔 Journal written");
+    try {
+      log("  🏗️  Building journal site...");
+      execSync(`node ${path.join(ROOT, "docs", "build-journal.js")}`, { stdio: "inherit" });
+      log("  ✅ Journal site built");
+    } catch (e) {
+      log(`  ⚠️  Journal build failed: ${e.message}`);
+    }
   }
 
   return { ...state, current_phase: "PONDER", ponder_count: 0,
@@ -1392,7 +1399,7 @@ function ensureDirectories() {
   const dirs = [
     MEMORY_DIR, RESEARCH_DIR, DESIGN_DIR, SPECS_DIR, REFLECTIONS_DIR,
     path.join(ROOT, "docs", "journal"),
-    path.join(ROOT, "docs", "_site"),
+    path.join(ROOT, "docs"),
     path.join(ROOT, "projects"),
   ];
   dirs.forEach(d => fs.mkdirSync(d, { recursive: true }));
