@@ -2,15 +2,6 @@ name: "🚀 03-Deploy"
 
 on:
   workflow_dispatch:
-    inputs:
-      deploy_target:
-        description: 'Deploy target'
-        type: choice
-        required: true
-        default: 'staging'
-        options:
-          - 'staging'
-          - 'production'
   workflow_run:
     workflows: ["🏗️ 02-Build-Core"]
     types: [completed]
@@ -18,9 +9,9 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Vercel
+    name: Commit & Deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     permissions:
       contents: write
@@ -36,10 +27,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install CLI tools
-        run: |
-          npm install -g vercel@latest convex@latest
-
       - name: Bootstrap state
         run: |
           mkdir -p agent/memory
@@ -53,40 +40,13 @@ jobs:
           EOF
           fi
 
-      - name: Deploy Convex
-        env:
-          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-        run: |
-          cd projects/blairs-academy
-          npx convex deploy --prod || echo "Convex deploy skipped"
-
-      - name: Deploy Staging
-        if: inputs.deploy_target == 'staging' || github.event_name == 'workflow_dispatch'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          cd projects/blairs-academy
-          vercel deploy --yes --token=$VERCEL_TOKEN
-
-      - name: Deploy Production
-        if: inputs.deploy_target == 'production'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          cd projects/blairs-academy
-          vercel deploy --prod --yes --token=$VERCEL_TOKEN
-
       - name: Update state
         run: |
           python3 -c "
           import json
           s = json.load(open('agent/memory/state.json'))
           s['current_phase'] = 'DEPLOY_PROD'
-          s['production_url'] = 'https://blairs-academy.vercel.app'
+          s['production_url'] = 'blairs-academy.vercel.app'
           json.dump(s, open('agent/memory/state.json','w'), indent=2)
           "
 
@@ -96,9 +56,9 @@ jobs:
           git config user.email "aria@autonomous.build"
           git add -A
           if git diff --staged --quiet; then
-            echo "Nothing to commit"
+            echo "Nothing to commit - Vercel will auto-deploy from main"
           else
-            git commit -m "🚀 [DEPLOY] Production deployed"
+            git commit -m "🚀 [DEPLOY] Ready for Vercel auto-deploy"
             git push
-            echo "✅ Committed"
+            echo "✅ Committed - Vercel will auto-build from main branch"
           fi
